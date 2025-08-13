@@ -1,0 +1,17 @@
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.pyright]
+include = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+lint.select = ["E","F","I","UP","B"]
+lint.ignore = ["E501"]
+fix = true

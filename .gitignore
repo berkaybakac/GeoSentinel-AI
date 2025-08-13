@@ -1,6 +1,24 @@
-.venv
+# Python
 __pycache__/
+*.pyc
+.venv/
+
+# Environment variables
+.env
+
+# OS
 .DS_Store
-architecture.md
-.DS_Store
-.DS_Store
+
+# Data & artifacts
+data/interim/
+data/processed/
+models/
+notebooks/.ipynb_checkpoints/
+
+# VS Code - sadece geçici dosyalar
+.vscode/*.log
+
+# Kaggle/Downloads
+*.zip
+*.tar.gz
+*.rar

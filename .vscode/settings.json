@@ -1,0 +1,51 @@
+{
+  // Python env & format
+  "python.defaultInterpreterPath": "/Users/berkaybakac/miniconda3/envs/geosentinel/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  },
+
+  // Kod kaydedildiğinde fix
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "always"
+  },
+
+  // Ruff lint
+  "ruff.enable": true,
+
+  // Prettier ayarları
+  "prettier.requireConfig": false,
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // Dosya format & indent
+  "files.associations": {
+    "*.json": "jsonc"
+  },
+  "editor.tabSize": 2,
+  "editor.insertSpaces": true,
+  "editor.detectIndentation": false,
+
+  // Görünüm (proje bazlı override edilebilir)
+  "workbench.colorTheme": "Default Dark+",
+  "workbench.iconTheme": "vscode-icons",
+  "workbench.startupEditor": "newUntitledFile",
+  "workbench.editor.enablePreview": true,
+  "workbench.editor.enablePreviewFromQuickOpen": true,
+  "workbench.activityBar.visible": true,
+  "workbench.statusBar.visible": true,
+  "workbench.sideBar.location": "left",
+  "workbench.panel.defaultLocation": "bottom",
+  "window.zoomLevel": 0,
+  "files.autoSave": "onWindowChange",
+  "files.trimTrailingWhitespace": true
+}
