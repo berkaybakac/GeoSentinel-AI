@@ -29,7 +29,6 @@ Bu modül, GPS konum verilerini işleyerek **kural tabanlı geofence** kontrolü
 
 - **Normal rota:** sabit/ılımlı hız ve yönle ilerleyen GPS noktaları.
 - **Anomali senaryoları:**
-
   - Ani hız artışı/azalması (speed spike/drop)
   - Rota sapması / ani konum sıçraması (route jump)
   - Geofence dışına çıkma (geofence violation)
@@ -55,7 +54,6 @@ Bu modül, GPS konum verilerini işleyerek **kural tabanlı geofence** kontrolü
 ### Parametre Yönetimi
 
 - Tüm parametreler `config.json` dosyasından okunur:
-
   ```json
   {
     "geofence": {
@@ -66,7 +64,6 @@ Bu modül, GPS konum verilerini işleyerek **kural tabanlı geofence** kontrolü
     }
   }
   ```
-
 - Parametre değişimi için API kodunu değiştirmeye gerek yoktur.
 
 ### Alarm Üretimi (Geofence)
@@ -97,12 +94,10 @@ Alan dışı şartı **debounce** ile sağlandığında aşağıdaki JSON dönd�
 
 - **Isolation Forest (IF)** kullanılacaktır (`sklearn.ensemble.IsolationForest`).
 - Gerekçe:
-
-  - Hafif ve hızlı (ağaç tabanlı; \~120k kayıt gibi hacimleri düşük işlem gücüyle işler).
+  - Hafif ve hızlı (ağaç tabanlı; ~120k kayıt gibi hacimleri düşük işlem gücüyle işler).
   - Anomali oranı `contamination` ile ayarlanabilir.
   - Parametre ayarı görece basit (`n_estimators`, `max_samples`).
   - Çeşitli sürüş davranışlarında pratik ve ölçeklenebilir.
-
 - **Alternatif DBSCAN** parametre optimizasyon zorluğu ve gerçek zamanlı dezavantajları nedeniyle **tercih edilmemiştir**.
 
 ### Özellikler (Feature Engineering)
@@ -146,57 +141,42 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
 
 - `pandas.info()`, `df.describe()`, `df.isna().sum()` ile tipler, dağılımlar, null oranları analiz edilir.
 - Architecture’daki beklenen alanlar ↔ dataset kolonları **eşleştirilir** (mapping).
-
   - Örnek: `speed` ↔ `speed_kmh` → **m/s**’e dönüştür.
   - Örnek: `lat` ↔ `latitude`, `lon` ↔ `longitude`
-
 - Özellik çıkarımı **mapping tablosu** üzerinden yapılır (dataset değişse de tek yerden güncelle).
 
 ### 4.2 Performans Testi
 
 - Test setinde model çıktıları ile **gerçek etiketler** (varsa) karşılaştırılır.
 - **Metrikler:**
-
   - Confusion Matrix: TP, FP, FN, TN
   - **Recall (≥ %80)**, **False Alarm Rate (≤ %10)**, Precision
-
 - Sonuçlar `report.md` içinde raporlanır.
 - Test çıktısı, model parametrelerinin (örn. `contamination`) **iyileştirilmesi** için tekrar kullanılır.
 
-# Metrik Tanımı (net ve ölçülebilir) — **final**
-
-#### 4.3 Ölçüm Kuralları (Net Tanım)
+### 4.3 Ölçüm Kuralları (Net Tanım)
 
 - **Pozitif sınıf:** “Anomali”
 - **Değerlendirme birimi:** Nokta bazlı (her GPS örneği). Örnekleme hızı değişkense zaman senkronizasyonundan sonra nokta bazlı değerlendirme yapılır.
 - **Confusion Matrix:**
-
   - **TP:** Anomali olan örneğin doğru yakalanması
   - **FP:** Normal örnek için yanlış alarm (false alarm)
   - **FN:** Anomali örneğin kaçırılması
   - **TN:** Normal örnekte alarm üretilmemesi
-
 - **Metrikler (nokta bazlı):**
-
   - **Recall =** TP / (TP + FN)
   - **False Alarm Rate (FAR) =** FP / (FP + TN)
   - **Precision =** TP / (TP + FP)
-
 - **Hedefler:** **Recall ≥ 0.80** ve **FAR ≤ 0.10**
   (Simülasyon + gerçek testin **birleşik** sonucu; cihazlar arasında **micro-average**.)
 - **Eşik/parametre seçimi (IF için):**
-
   - Önce **FAR ≤ 0.10** koşulunu sağlayan **`contamination`** aralığı bulunur (önerilen grid: 0.01–0.15 arası, adım 0.01).
   - Bu aralıkta **Recall** maksimize edilir.
-
 - **Etiket kaynağı:**
-
   - **Simülasyon:** yerleşik (ground-truth) anomali etiketleri.
   - **Gerçek veri:** varsa domain etiketleri/olay kayıtları; yoksa senaryoya özgü (geofence ihlali vb.) kural tabanlı etiketleme.
-
-> Not: İsteğe bağlı olarak cihaz/rota bazında **ek rapor** (macro-average) da üretilebilir; hedefler birleşik (micro) üzerinden doğrulanır.
-
-- **Parametre taraması (IF):** _Örnek_ olarak `contamination ∈ [0.05, 0.12]` aralığı (adım 0.01) denenebilir; **kesin aralık** dataset/ortama göre belirlenir. Önce FAR ≤ 0.10 koşulu sağlanır, ardından bu aralıkta Recall maksimize edilir.
+- **Parametre taraması (IF):**
+  _Örnek_ olarak `contamination ∈ [0.05, 0.12]` aralığı (adım 0.01) denenebilir; **kesin aralık** dataset/ortama göre belirlenir. Önce FAR ≤ 0.10 koşulu sağlanır, ardından bu aralıkta Recall maksimize edilir.
 
 ---
 
@@ -232,7 +212,6 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
     4. Anomali varsa **JSON alarm** döndür.
 
   - **Çıktı (alarm örneği):**
-
     ```json
     {
       "device_id": "dev01",
@@ -242,15 +221,21 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
     }
     ```
 
-- **Not:** Bildirim (push, SMS, e-mail) bu projenin kapsamı **dışındadır**; JSON alarmı başka sistemler tüketebilir.
+#### Normal (Alarm Yok) Cevap Şeması
+
+Anomali tespit edilmezse API şu minimal cevabı döndürür:
+
+```json
+{ "device_id": "dev01", "timestamp": "2025-08-14T12:00:00Z", "anomaly": false }
+```
 
 ### Durum Yönetimi (Debounce)
 
 - Debounce için **cihaz bazlı kısa süreli bellek** (in-memory pencere) tutulur:
-
   - `device_id → son N saniyelik alan-dışı süresi`
-
 - Kalıcı depolama gerekmiyor (gereksinim dışı).
+
+---
 
 # — Alarm Kodları ve JSON Şeması — **final**
 
@@ -267,7 +252,7 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 
 #### Alarm JSON Şeması (Minimal ve İzlenebilir)
 
-> **Uyumluluk notu:** Dokümanda geçen **top-level `anomaly_reason`** alanını **koruyoruz** (değerlendirme sistemleri bunu bekleyebilir).
+> **Uyumluluk notu:** Dokümanda geçen **top-level `anomaly_reason`** alanı **korunur** (değerlendirme sistemleri bunu bekleyebilir).
 > Yeni `alarm` nesnesi ise izlenebilirlik için ek bilgileri taşır.
 
 ```json
@@ -275,27 +260,29 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
   "device_id": "dev01",
   "timestamp": "2025-08-14T12:00:00Z",
   "location": { "lat": 36.8005, "lon": 34.617 },
-
-  "anomaly_reason": "GEOFENCE_EXIT", // Dokümanla tam uyum (zorunlu)
-
+  "anomaly_reason": "GEOFENCE_EXIT",
   "alarm": {
     "code": 1000,
     "label": "GEOFENCE_EXIT",
-    "source": "GEOFENCE", // veya "MODEL"
-    "score": 0.91, // Yalnızca source="MODEL" için (opsiyonel)
-    "threshold": 0.85, // Yalnızca source="MODEL" için (opsiyonel)
-    "window_sec": 10 // Debounce/özellik penceresi (opsiyonel)
+    "source": "GEOFENCE",
+    "score": 0.91,
+    "threshold": 0.85,
+    "window_sec": 10
   }
 }
 ```
 
 - **Zorunlu alanlar:** `device_id`, `timestamp`, `location`, `anomaly_reason`, `alarm.code`, `alarm.label`, `alarm.source`
 - **Opsiyonel ama faydalı:** `alarm.score`, `alarm.threshold`, `alarm.window_sec`
-
   - `score/threshold` **sadece** `source="MODEL"` olduğunda set edilir (geofence’te yoktur).
   - `window_sec` geofence’te **debounce**, modelde ise **özellik penceresi** olarak yorumlanır.
 
-- **Çakışma kuralı (basit):** Aynı anda birden fazla tetikleyici varsa **öncelik**: `GEOFENCE_EXIT` > `MODEL_ANOMALY` > `SPEED_ANOMALY` > `ROUTE_JUMP`. Tek alarm üret, `anomaly_reason` ve `alarm` bu önceliğe göre set edilir.
+**Skor/Threshold Ölçeği (Isolation Forest)**
+
+- `alarm.score` ve `alarm.threshold` **0–1 aralığına normalize** edilir.
+- Normalize yaklaşımı: `raw = -decision_function(x)`; `score = (raw - min) / (max - min)`.
+  Burada `min/max`, eğitim dağılımından veya hareketli bir pencereden (rolling) alınır.
+- `threshold` değeri, seçilen `contamination` yüzdesine karşılık gelen **persentil**dir (örn. 0.85).
 
 ---
 
@@ -416,39 +403,44 @@ Bu projede geofence **bizim `config.json`** dosyamızdaki `lat0, lon0, radius_m`
 - Geofence modülünün **asıl doğrulaması**, architecture’da tanımlanan **simülasyon senaryoları** üzerinden yapılacaktır.
 - DBRA24’teki `geofencing_violation` etiketi **ek doğrulama** olarak raporlanır; **birebir eşleşme beklenmemelidir** (geometri farkı olabilir).
 
-Bu yaklaşım kapsamı büyütmez; yalnızca değerlendirmede **etiket kaynağı farkını** şeffaf biçimde not eder.
-
 ---
 
-## Appendix B — Örnek Konfigürasyon Şablonu (dataset-agnostik)
+## Appendix B — Örnek Konfigürasyon (valid JSON)
 
-Aşağıdaki şablon değer içermez; sayılar **örnek** veya **opsiyonel**dir. Gerçek değerler, dağıtım/dataset'e göre doldurulacaktır.
+Aşağıdaki JSON **örnektir**; dağıtımda değerler ortamınıza göre güncellenir.
 
+```json
 {
-"geofence": {
-"lat0": "<required:number>", // dağıtıma göre doldur
-"lon0": "<required:number>", // dağıtıma göre doldur
-"radius_m": "<required:number>", // örn. 300–1000
-"debounce_sec": 10 // varsayılan; ihtiyaca göre güncellenir
-},
-"filters": {
-"max_speed_kmh": null, // örn. 300; null = kapalı
-"max_accel_mps2": null // opsiyonel; null = kapalı
-},
-"features": {
-"window_sec": 0, // 0 = kapalı; örn. 5–10 = açık
-"scaler": "standard" // "standard" | "robust"
-},
-"model": {
-"type": "isolation_forest",
-"n_estimators": 256, // örnek varsayılan
-"max_samples": 1024, // örnek varsayılan
-"contamination": null, // grid search ile bulunur; null = “deployment’ta set edilir”
-"random_state": 42 // tekrarlanabilirlik için önerilir
+  "version": "1.0",
+  "geofence": {
+    "lat0": 0.0,
+    "lon0": 0.0,
+    "radius_m": 500,
+    "debounce_sec": 10
+  },
+  "filters": {
+    "max_speed_kmh": null,
+    "max_accel_mps2": null
+  },
+  "features": {
+    "window_sec": 0,
+    "scaler": "standard"
+  },
+  "model": {
+    "type": "isolation_forest",
+    "n_estimators": 256,
+    "max_samples": 1024,
+    "contamination": null,
+    "random_state": 42
+  }
 }
-}
+```
 
-> **Not:** Konfig’de bir değer **null/placeholder** ise ilgili mekanizma **devre dışıdır**; dağıtım sırasında doldurulur.
+**Notlar**
+
+- `geofence.lat0/lon0/radius_m` dağıtımda **zorunlu** doldurulmalıdır.
+- `contamination` grid aramasıyla bulunur; boş bırakılırsa deploy sırasında set edilir.
+- `window_sec=0` → zamansal pencere devre dışı (basit modül varsayılanı).
 
 ---
 
