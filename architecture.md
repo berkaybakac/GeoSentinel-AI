@@ -1,8 +1,10 @@
-# Locate – AI Anomali Tespit Modülü (Architecture)
+# Locate – AI Anomali Tespit Modülü
 
 ## 0. Overview
 
 Bu modül, GPS konum verilerini işleyerek **kural tabanlı geofence** kontrolü ve **hafif makine öğrenmesi** (Isolation Forest) ile anormallikleri tespit eder. Anomali bulunduğunda **JSON alarm çıktısı** üretir ve API üzerinden döndürür. Hedef performans: **recall ≥ %80** ve **false alarm ≤ %10**.
+
+> **Veri Kaynağı Notu (Netlik Eklendi):** Bu projenin **resmî değerlendirme kaynağı DBRA24**’tür. Simülasyon, yalnızca geofence debounce/gürültü senaryolarını **tanısal** amaçla doğrulamak için **opsiyoneldir** ve **kabul metriklerine dahil edilmez**.
 
 ---
 
@@ -21,11 +23,11 @@ Bu modül, GPS konum verilerini işleyerek **kural tabanlı geofence** kontrolü
 ### Temizleme Kuralları
 
 - Eksik (NaN/boş) kayıtları sil.
-- Fiziksel olarak imkânsız hızları filtrele (örn. **> 300 km/s**).
+- **Opsiyonel hız filtresi (Netlik Eklendi):** Fiziksel olarak imkânsız hızlar için **opsiyonel** filtre bulunur. `config.filters.max_speed_kmh` bir sayı ise bu değerin üzerindeki hızlar atılır; `null` ise filtre devre dışıdır.
 - Zaman sıralamasını kontrol et (aynı `device_id` için `timestamp` monoton artmalı).
 - Gerekirse birim dönüşümü yap (örn. dataset `speed_kmh` ise **m/s**’e çevir: `mps = kmh / 3.6`).
 
-### Simülasyon (gerekirse)
+### Simülasyon (opsiyonel)
 
 - **Normal rota:** sabit/ılımlı hız ve yönle ilerleyen GPS noktaları.
 - **Anomali senaryoları:**
@@ -35,8 +37,8 @@ Bu modül, GPS konum verilerini işleyerek **kural tabanlı geofence** kontrolü
 
 **Çıktılar:**
 
-- `sim_train.jsonl`, `sim_test.jsonl`
-- Gerçek cihaz geldiğinde: `real_test.jsonl`
+- `sim_train.jsonl`, `sim_test.jsonl` (**opsiyonel**, yalnızca tanısal)
+- **Resmî test:** `dbra24_test.jsonl`
 
 ---
 
@@ -51,10 +53,10 @@ Bu modül, GPS konum verilerini işleyerek **kural tabanlı geofence** kontrolü
 - **Alan dışı kuralı:** `distance > radius_m` ise **dışarıda**.
 - **Debounce:** GPS gürültüsünü azaltmak için **kesintisiz `debounce_sec`** (varsayılan **10 s**) süreyle alan dışında kalırsa alarm üret.
 
-### Parametre Yönetimi
+### Parametre Yönetimi (Netlik Eklendi)
 
-- Tüm geofence parametreleri `config.json` dosyasından okunur. Geçerli ve sürümlü örnek için **Appendix B — Örnek Konfigürasyon** bölümüne bakınız.
-- Parametre değişimi için API kodunu değiştirmeye gerek yoktur.
+- Tüm geofence parametreleri `config.json` dosyasından okunur. Parametre değişimi için API kodunu değiştirmeye gerek yoktur.
+- `lat0/lon0/radius_m` değerleri **operasyonel gereksinimlerle** belirlenir (ör. tesis/rota merkezi ve güvenli yarıçap). **Otomatik türetme** (ör. medyan merkez + 95. persentil yarıçap) **kapsam dışı/opsiyonel** bir kolaylıktır; kullanılacaksa yine `config.json`’a yazılır.
 
 ### Alarm Üretimi (Geofence)
 
@@ -113,10 +115,10 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
 
 ### Pipeline
 
-1. **Veri Yükleme:** Simülasyon + gerçek dataset (örn. DBRA24).
+1. **Veri Yükleme:** **DBRA24** (simülasyon, geofence davranışını tanısal doğrulamak için **opsiyonel**).
 2. **Ön İşleme:** Eksik/hatalı kayıt temizliği, filtreler, birim dönüşümleri.
-3. **Özellik Çıkarımı:** Yukarıdaki feature set.
-4. **Eğitim:** Isolation Forest (yalnızca **normal** davranış ile eğitmek tercih edilir).
+3. **Özellik Çıkarımı:** Yukarıdaki feature set (mapping tablosu aracılığıyla).
+4. **Eğitim:** Isolation Forest (tercihen yalnız **normal** davranış örnekleriyle).
 5. **Model Kaydetme:** `joblib` ile `isoforest.joblib`.
 6. **Değerlendirme:** Test setinde hedef metrikler (aşağıda).
 
@@ -143,9 +145,11 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
   - Örnek: `lat` ↔ `latitude`, `lon` ↔ `longitude`
 - Özellik çıkarımı **mapping tablosu** üzerinden yapılır (dataset değişse de tek yerden güncelle).
 
-### 4.2 Performans Testi
+### 4.2 Performans Testi (Netlik Eklendi)
 
-- Test setinde model çıktıları ile **gerçek etiketler** (varsa) karşılaştırılır.
+- **Resmî test seti:** **DBRA24 test** bölümü.
+- Model çıktıları ile **gerçek etiketler** karşılaştırılır.
+- **Resmî metrik:** **Top-line micro-average** (tüm cihazlar/örnekler birleşik); kabul bu skorla yapılır.
 - **Metrikler:**
   - Confusion Matrix: TP, FP, FN, TN
   - **Recall (≥ %80)**, **False Alarm Rate (≤ %10)**, Precision
@@ -166,15 +170,14 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
   - **False Alarm Rate (FAR) =** FP / (FP + TN)
   - **Precision =** TP / (TP + FP)
 - **Hedefler:** **Recall ≥ 0.80** ve **FAR ≤ 0.10**
-  (Simülasyon + gerçek testin **birleşik** sonucu; cihazlar arasında **micro-average**.)
-- **Eşik/parametre seçimi (IF için):**
-  - Önce **FAR ≤ 0.10** koşulunu sağlayan **`contamination`** aralığı bulunur (önerilen grid: 0.01–0.15 arası, adım 0.01).
+  (**Resmî skor**: **DBRA24 test** üzerinde **micro-average**).
+- **Eşik/parametre seçimi (IF için) – Netlik Eklendi:**
+  - Önce **FAR ≤ 0.10** koşulunu sağlayan **`contamination`** aralığı bulunur (örn. 0.01–0.15 arası, adım 0.01).
   - Bu aralıkta **Recall** maksimize edilir.
 - **Etiket kaynağı:**
-  - **Simülasyon:** yerleşik (ground-truth) anomali etiketleri.
-  - **Gerçek veri:** varsa domain etiketleri/olay kayıtları; yoksa senaryoya özgü (geofence ihlali vb.) kural tabanlı etiketleme.
-- **Parametre taraması (IF):**
-  _Örnek_ olarak `contamination ∈ [0.05, 0.12]` aralığı (adım 0.01) denenebilir; **kesin aralık** dataset/ortama göre belirlenir. Önce FAR ≤ 0.10 koşulu sağlanır, ardından bu aralıkta Recall maksimize edilir.
+  - **DBRA24:** `geofencing_violation`, `route_anomaly`, `anomalous_event`.
+  - **Simülasyon (opsiyonel):** yerleşik (ground-truth) anomali etiketleri; **resmî skora dahil değildir**.
+- **Parametre taraması (IF):** `contamination ∈ [0.05, 0.12]` gibi aralıklar denenebilir; **kesin aralık** dataset/ortama göre belirlenir. Önce FAR ≤ 0.10 koşulu sağlanır, ardından Recall maksimize edilir.
 
 ---
 
@@ -191,7 +194,6 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
 - `POST /detect`
 
   - **Girdi (JSON):**
-
     ```json
     {
       "device_id": "dev01",
@@ -201,14 +203,11 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
       "speed": 15.0
     }
     ```
-
   - **İş Akışı:**
-
     1. Şema ve birim doğrulama.
     2. **Geofence** kontrolü (debounce ile).
     3. **ML modeli** ile anomali skoru ve karar.
     4. Anomali varsa **JSON alarm** döndür.
-
   - **Çıktı (alarm örneği):**
     > Not: Tam şema ve zorunlu alanlar için **5.2 Alarm JSON Şeması** bölümüne bakınız.
 
@@ -229,8 +228,8 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 - `1101` → `ROUTE_JUMP` (rotada sıçrama / tutarsız konum; büyük haversine farkı)
 - `1200` → `MODEL_ANOMALY` (ML model skoru eşik üstü; Isolation Forest)
 
-**Çakışma kuralı:** Aynı anda birden fazla tetikleyici oluşursa öncelik
-`GEOFENCE_EXIT > MODEL_ANOMALY > SPEED_ANOMALY > ROUTE_JUMP`; **tek alarm** üretilir.
+**Çakışma kuralı (Netlik Eklendi):** Aynı anda birden fazla tetikleyici oluşursa **tek alarm** üretilir; öncelik
+`GEOFENCE_EXIT > MODEL_ANOMALY > SPEED_ANOMALY > ROUTE_JUMP`. İkincil tetikleyiciler, **cevapta yer almaz** ancak **iç log**’a yazılabilir (opsiyonel).
 
 ### 5.2 Alarm JSON Şeması (Minimal ve İzlenebilir)
 
@@ -285,6 +284,11 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
   Burada `min/max`, eğitim dağılımından veya hareketli bir pencereden (rolling) alınır.
 - `threshold` değeri, seçilen `contamination` yüzdesine karşılık gelen **persentil**dir (örn. 0.85).
 
+### API Cevabı Modu (Netlik Eklendi)
+
+- Varsayılan: **İzlenebilir Mod** (zorunlu alanlar + `alarm{code,label,source}`).
+- `config.api.alarm_verbose = false` ise **Minimal Mod** (yalnız zorunlu alanlar döner).
+
 ### Durum Yönetimi (Debounce)
 
 - Debounce için **cihaz bazlı kısa süreli bellek** (in-memory pencere) tutulur:
@@ -297,14 +301,16 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 
 **Amaç:** Tüm senaryolarda modülün doğru çalıştığını göstermek.
 
-### Simülasyon Testi
+### Simülasyon Testi (opsiyonel, tanısal)
 
 - Hız spike/drop, rota sıçraması, geofence ihlali senaryolarını üret ve sırayla API’ye gönder.
 - Alarm beklenen yerlerde **doğru alarm** geldiğini doğrula.
+- **Not:** Simülasyon sonuçları **resmî skora dahil edilmez**; tanısal ek tablo olarak raporlanabilir.
 
-### Gerçek Veri Testi
+### Gerçek Veri Testi (Resmî)
 
-- Gerçek cihaz logları (varsa `real_test.jsonl`) aynı prosedür ile test edilir.
+- **DBRA24 test bölümü** aynı prosedür ile test edilir.
+- **Resmî skor politikası (Netlik Eklendi):** Kabul kriteri, DBRA24 üzerinde hesaplanan **top-line micro-average** metriklerle doğrulanır.
 
 ### Rapor
 
@@ -323,26 +329,26 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 - [ ] GPS verilerini okuyup işleyen Python script(ler)i mevcut.
 - [ ] Geofence tanımlama ve **debounce’lu** çıkış uyarısı tamam.
 - [ ] ML modeli (Isolation Forest) **eğitildi** ve dosyaya kaydedildi (`isoforest.joblib`).
-- [ ] Test setinde **recall ≥ %80**, **false alarm ≤ %10** hedefleri sağlandı.
+- [ ] Test setinde **recall ≥ %80**, **false alarm ≤ %10** hedefleri sağlandı (resmî test: **DBRA24**).
 - [ ] API (`POST /detect`) veri aldığında **doğru JSON alarm** üretiyor.
 
 ---
 
 ## 8. Mantıklı Çalışma Sırası (Roadmap)
 
-1. **Veri Hazırlığı** → Temizlik, birim dönüşümleri, simülasyon setleri.
+1. **Veri Hazırlığı** → Temizlik, birim dönüşümleri, **DBRA24 mapping**, (opsiyonel) simülasyon setleri.
 2. **Geofence** → Haversine + debounce (10 s) ve parametreleri `config.json`.
 3. **ML Modeli** → Feature’lar, IF eğitimi, `isoforest.joblib` kaydı.
 4. **API Entegrasyonu** → `POST /detect`: geofence → model → alarm.
-5. **Test & Raporlama** → Simülasyon + gerçek veri, metrikler, `report.md`.
+5. **Test & Raporlama** → **DBRA24** (resmî) + (varsa) simülasyon (tanısal), metrikler, `report.md`.
 
 ---
 
 ## 9. Çıktı Artefaktları (Dosyalar)
 
-- **Veri:** `sim_train.jsonl`, `sim_test.jsonl`, `real_test.jsonl`
+- **Veri:** `dbra24_test.jsonl` (resmî), `sim_train.jsonl`, `sim_test.jsonl` (opsiyonel)
 - **Model:** `isoforest.joblib`
-- **Konfigürasyon:** `config.json`
+- **Konfigürasyon:** `config.json`, `mapping_dbra24.json`
 - **Rapor:** `report.md`
 
 ---
@@ -390,7 +396,7 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 | label_route             | `route_anomaly`        | bool                                                                                             |
 | label_event             | `anomalous_event`      | bool                                                                                             |
 
-> Not: Testte **IF performansı** için pozitif sınıfı `label_route ∪ label_event` (route_anomaly OR anomalous_event) olarak almak pratiktir; geofence modülü ise `label_geofence` ile ayrıca raporlanır.
+> **Tek Nokta Kaynağı (Netlik Eklendi):** Kolon eşlemesi **tek bir mapping dosyası** üzerinden yönetilir (örn. `mapping_dbra24.json`). Hız dönüşümü (km/h→m/s) bu dosyada tanımlıdır; dataset değişirse yalnızca mapping güncellenir.
 
 ---
 
@@ -398,7 +404,7 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 
 - **ML (IF) için pozitif:** `route_anomaly OR anomalous_event`
 - **Geofence için pozitif:** `geofencing_violation`
-- **Bileşik rapor (opsiyonel):** ML ve geofence metrikleri **ayrı** verilir; istenirse **birleşik anomali = (ML ∪ geofence)** olarak ayrıca raporlanabilir.
+- **Bileşik rapor (opsiyonel):** ML ve geofence metrikleri **ayrı** verilir; istenirse **birleşik anomali = (ML ∪ geofence)** ayrıca raporlanabilir.
 
 ---
 
@@ -407,7 +413,7 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 DBRA24’te `geofencing_violation` etiketi bulunsa da, bu etiketin **hangi merkez/yarıçap** ile üretildiği bilinmemektedir.
 Bu projede geofence **bizim `config.json`** dosyamızdaki `lat0, lon0, radius_m` ile tanımlanır. Bu nedenle:
 
-- Geofence modülünün **asıl doğrulaması**, architecture’da tanımlanan **simülasyon senaryoları** üzerinden yapılacaktır.
+- Geofence modülünün **asıl doğrulaması**, architecture’da tanımlanan **simülasyon senaryoları** üzerinden yapılacaktır (opsiyonel).
 - DBRA24’teki `geofencing_violation` etiketi **ek doğrulama** olarak raporlanır; **birebir eşleşme beklenmemelidir** (geometri farkı olabilir).
 
 ---
@@ -419,6 +425,9 @@ Aşağıdaki JSON **örnektir**; dağıtımda değerler ortamınıza göre günc
 ```json
 {
   "version": "1.0",
+  "api": {
+    "alarm_verbose": true
+  },
   "geofence": {
     "lat0": 0.0,
     "lon0": 0.0,
@@ -439,6 +448,9 @@ Aşağıdaki JSON **örnektir**; dağıtımda değerler ortamınıza göre günc
     "max_samples": 1024,
     "contamination": null,
     "random_state": 42
+  },
+  "dataset": {
+    "mapping_file": "mapping_dbra24.json"
   }
 }
 ```
@@ -448,6 +460,7 @@ Aşağıdaki JSON **örnektir**; dağıtımda değerler ortamınıza göre günc
 - `geofence.lat0/lon0/radius_m` dağıtımda **zorunlu** doldurulmalıdır.
 - `contamination` grid aramasıyla bulunur; boş bırakılırsa deploy sırasında set edilir.
 - `window_sec=0` → zamansal pencere devre dışı (basit modül varsayılanı).
+- `api.alarm_verbose=false` ile **Minimal Mod** çıktısı alınabilir.
 
 ---
 
@@ -457,16 +470,16 @@ Aşağıdaki sıra, projenin gerçek icra sırasıdır. Her adım, DoD sağlanı
 
 ### 1) Veri Hazırlığı → **DoD**
 
-- Girdi: DBRA24 CSV (ve/veya simülasyon).
-- İş: Şema/temizlik, birim dönüşümü (km/h→m/s), sıralama.
-- Çıktı: `sim_train.jsonl`, `sim_test.jsonl` (varsa `real_test.jsonl`).
+- Girdi: DBRA24 CSV (ve/veya opsiyonel simülasyon).
+- İş: Şema/temizlik, birim dönüşümü (km/h→m/s), sıralama, mapping doğrulama.
+- Çıktı: `dbra24_test.jsonl` (resmî), `sim_train.jsonl`, `sim_test.jsonl` (opsiyonel).
 - Doğrulama: Zorunlu alanlar (`timestamp, lat, lon, speed, device_id`) eksiksiz.
 
 ### 2) Geofence → **DoD**
 
 - İş: Haversine + `radius_m`, `debounce_sec=10` (config’ten).
 - Çıktı: Alan dışına çıkışta `GEOFENCE_EXIT` JSON alarmı.
-- Doğrulama: Simülasyon senaryolarında beklenen yerde alarm **üretiliyor**.
+- Doğrulama: (Opsiyonel) simülasyon senaryolarında beklenen yerde alarm **üretiliyor**.
 
 ### 3) ML Model (Isolation Forest) → **DoD**
 
@@ -477,13 +490,13 @@ Aşağıdaki sıra, projenin gerçek icra sırasıdır. Her adım, DoD sağlanı
 ### 4) API Entegrasyonu (FastAPI) → **DoD**
 
 - İş: `POST /detect` akışı: şema → geofence → model → alarm.
-- Çıktı: Anomali varsa dokümana uygun **JSON alarm** dönüyor.
+- Çıktı: Anomali varsa dokümana uygun **JSON alarm** dönüyor (varsayılan: İzlenebilir Mod).
 - Doğrulama: Tek cihaz akışında uçtan uca çağrı başarılı.
 
 ### 5) Test & Raporlama → **DoD**
 
-- İş: Simülasyon + DBRA24 testleri; metrikler (TP, FP, FN, TN, Recall, Precision, FAR).
-- Hedef: **Recall ≥ 0.80**, **FAR ≤ 0.10**.
+- İş: **DBRA24 test** (resmî) + (varsa) simülasyon (tanısal); metrikler (TP, FP, FN, TN, Recall, Precision, FAR).
+- Hedef: **Recall ≥ 0.80**, **FAR ≤ 0.10** (resmî skor: DBRA24 micro-average).
 - Çıktı: `report.md` (hedefler sağlandı/sağlanmadı bilgisiyle).
 
 #### Doğal İterasyon Döngüleri
