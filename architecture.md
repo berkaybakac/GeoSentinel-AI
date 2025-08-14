@@ -53,17 +53,7 @@ Bu modül, GPS konum verilerini işleyerek **kural tabanlı geofence** kontrolü
 
 ### Parametre Yönetimi
 
-- Tüm parametreler `config.json` dosyasından okunur:
-  ```json
-  {
-    "geofence": {
-      "lat0": 36.8,
-      "lon0": 34.6,
-      "radius_m": 500,
-      "debounce_sec": 10
-    }
-  }
-  ```
+- Tüm geofence parametreleri `config.json` dosyasından okunur. Geçerli ve sürümlü örnek için **Appendix B — Örnek Konfigürasyon** bölümüne bakınız.
 - Parametre değişimi için API kodunu değiştirmeye gerek yoktur.
 
 ### Alarm Üretimi (Geofence)
@@ -75,7 +65,13 @@ Alan dışı şartı **debounce** ile sağlandığında aşağıdaki JSON dönd�
   "device_id": "dev01",
   "timestamp": "2025-08-14T12:00:00Z",
   "location": { "lat": 36.8, "lon": 34.6 },
-  "anomaly_reason": "GEOFENCE_EXIT"
+  "anomaly_reason": "GEOFENCE_EXIT",
+  "alarm": {
+    "code": 1000,
+    "label": "GEOFENCE_EXIT",
+    "source": "GEOFENCE",
+    "window_sec": 10
+  }
 }
 ```
 
@@ -123,6 +119,8 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
 4. **Eğitim:** Isolation Forest (yalnızca **normal** davranış ile eğitmek tercih edilir).
 5. **Model Kaydetme:** `joblib` ile `isoforest.joblib`.
 6. **Değerlendirme:** Test setinde hedef metrikler (aşağıda).
+
+- **Eğitim verisi seçimi:** IF denetimsiz olarak **normal** örneklerle eğitilir (DBRA24 için `route_anomaly==0 AND anomalous_event==0` kayıtlar). Etiketler sadece **değerlendirme** (4. bölüm) için kullanılır.
 
 ### Kullanılacak Kütüphaneler
 
@@ -212,14 +210,7 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
     4. Anomali varsa **JSON alarm** döndür.
 
   - **Çıktı (alarm örneği):**
-    ```json
-    {
-      "device_id": "dev01",
-      "timestamp": "2025-08-14T12:00:00Z",
-      "location": { "lat": 36.8005, "lon": 34.617 },
-      "anomaly_reason": "GEOFENCE_EXIT"
-    }
-    ```
+    > Not: Tam şema ve zorunlu alanlar için **5.2 Alarm JSON Şeması** bölümüne bakınız.
 
 #### Normal (Alarm Yok) Cevap Şeması
 
@@ -229,17 +220,7 @@ Anomali tespit edilmezse API şu minimal cevabı döndürür:
 { "device_id": "dev01", "timestamp": "2025-08-14T12:00:00Z", "anomaly": false }
 ```
 
-### Durum Yönetimi (Debounce)
-
-- Debounce için **cihaz bazlı kısa süreli bellek** (in-memory pencere) tutulur:
-  - `device_id → son N saniyelik alan-dışı süresi`
-- Kalıcı depolama gerekmiyor (gereksinim dışı).
-
----
-
-# — Alarm Kodları ve JSON Şeması — **final**
-
-#### Alarm Kodları (Sabit Sözlük)
+### 5.1 Alarm Kodları (Sabit Sözlük)
 
 Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 
@@ -248,12 +229,15 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 - `1101` → `ROUTE_JUMP` (rotada sıçrama / tutarsız konum; büyük haversine farkı)
 - `1200` → `MODEL_ANOMALY` (ML model skoru eşik üstü; Isolation Forest)
 
-> Not: Basitlik için yeterlidir. İhtiyaç halinde alt kodlar genişletilebilir.
+**Çakışma kuralı:** Aynı anda birden fazla tetikleyici oluşursa öncelik
+`GEOFENCE_EXIT > MODEL_ANOMALY > SPEED_ANOMALY > ROUTE_JUMP`; **tek alarm** üretilir.
 
-#### Alarm JSON Şeması (Minimal ve İzlenebilir)
+### 5.2 Alarm JSON Şeması (Minimal ve İzlenebilir)
 
 > **Uyumluluk notu:** Dokümanda geçen **top-level `anomaly_reason`** alanı **korunur** (değerlendirme sistemleri bunu bekleyebilir).
 > Yeni `alarm` nesnesi ise izlenebilirlik için ek bilgileri taşır.
+
+**GEOFENCE örneği:**
 
 ```json
 {
@@ -265,9 +249,26 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
     "code": 1000,
     "label": "GEOFENCE_EXIT",
     "source": "GEOFENCE",
+    "window_sec": 10
+  }
+}
+```
+
+**MODEL örneği:**
+
+```json
+{
+  "device_id": "dev01",
+  "timestamp": "2025-08-14T12:00:05Z",
+  "location": { "lat": 36.8007, "lon": 34.618 },
+  "anomaly_reason": "MODEL_ANOMALY",
+  "alarm": {
+    "code": 1200,
+    "label": "MODEL_ANOMALY",
+    "source": "MODEL",
     "score": 0.91,
     "threshold": 0.85,
-    "window_sec": 10
+    "window_sec": 5
   }
 }
 ```
@@ -283,6 +284,12 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 - Normalize yaklaşımı: `raw = -decision_function(x)`; `score = (raw - min) / (max - min)`.
   Burada `min/max`, eğitim dağılımından veya hareketli bir pencereden (rolling) alınır.
 - `threshold` değeri, seçilen `contamination` yüzdesine karşılık gelen **persentil**dir (örn. 0.85).
+
+### Durum Yönetimi (Debounce)
+
+- Debounce için **cihaz bazlı kısa süreli bellek** (in-memory pencere) tutulur:
+  - `device_id → son N saniyelik alan-dışı süresi`
+- Kalıcı depolama gerekmiyor (gereksinim dışı).
 
 ---
 
