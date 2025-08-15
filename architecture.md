@@ -153,6 +153,7 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
 - **Metrikler:**
   - Confusion Matrix: TP, FP, FN, TN
   - **Recall (≥ %80)**, **False Alarm Rate (≤ %10)**, Precision
+- **Threshold/Eşik:** Dengesiz veri nedeniyle **ROC yerine PR** çerçevesi kullanılır; `contamination` grid taranır, **önce** **FAR ≤ 0.10** koşulunu sağlayan eşikler filtrelenir, **ardından** Recall maksimize eden eşik seçilir; **seçim ve metrikler** `out/eval/thresholds.json` + `out/eval/report.md`’de kayıt altına alınır.
 - Sonuçlar `report.md` içinde raporlanır.
 - Test çıktısı, model parametrelerinin (örn. `contamination`) **iyileştirilmesi** için tekrar kullanılır.
 
@@ -171,13 +172,10 @@ Gerçek zamanlı akışta kısa bir pencere üzerinden istatistik eklemek, IF pe
   - **Precision =** TP / (TP + FP)
 - **Hedefler:** **Recall ≥ 0.80** ve **FAR ≤ 0.10**
   (**Resmî skor**: **DBRA24 test** üzerinde **micro-average**).
-- **Eşik/parametre seçimi (IF için) – Netlik Eklendi:**
-  - Önce **FAR ≤ 0.10** koşulunu sağlayan **`contamination`** aralığı bulunur (örn. 0.01–0.15 arası, adım 0.01).
-  - Bu aralıkta **Recall** maksimize edilir.
 - **Etiket kaynağı:**
   - **DBRA24:** `geofencing_violation`, `route_anomaly`, `anomalous_event`.
   - **Simülasyon (opsiyonel):** yerleşik (ground-truth) anomali etiketleri; **resmî skora dahil değildir**.
-- **Parametre taraması (IF):** `contamination ∈ [0.05, 0.12]` gibi aralıklar denenebilir; **kesin aralık** dataset/ortama göre belirlenir. Önce FAR ≤ 0.10 koşulu sağlanır, ardından Recall maksimize edilir.
+- **Parametre taraması (IF):** `contamination ∈ [0.05, 0.12]` gibi aralıklar denenebilir; **kesin aralık** dataset/ortama göre belirlenir.
 
 ---
 
@@ -301,10 +299,21 @@ Aşağıdaki sabit kodlar alarm nedenlerini standardize eder:
 
 **Amaç:** Tüm senaryolarda modülün doğru çalıştığını göstermek.
 
-### Simülasyon Testi (opsiyonel, tanısal)
+### Simülasyon Testi (çalıştırması zorunlu, üretimi opsiyonel)
 
-- Hız spike/drop, rota sıçraması, geofence ihlali senaryolarını üret ve sırayla API’ye gönder.
-- Alarm beklenen yerlerde **doğru alarm** geldiğini doğrula.
+- **Sim seti üretimi opsiyonel**, **çalıştırılması zorunludur**; geofence **debounce** ve **model tetikleyicileri** beklenen yerlerde alarm veriyor mu?
+- Örnek komut:
+
+```bash
+python -m scripts.eval \
+  --test data/sim/sim_test.jsonl \
+  --mapping mapping_dbra24.json \
+  --config config.json \
+  --model isoforest.joblib \
+  --out_dir out/sim_eval
+```
+
+- Çıktı: `out/sim_eval/report.md` (beklenen vs görülen alarm tablosu + kısa yorum).
 - **Not:** Simülasyon sonuçları **resmî skora dahil edilmez**; tanısal ek tablo olarak raporlanabilir.
 
 ### Gerçek Veri Testi (Resmî)
