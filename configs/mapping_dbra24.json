@@ -1,0 +1,15 @@
+{
+  "device_id": "vehicle_id",
+  "timestamp": "timestamp",
+  "lat": "latitude",
+  "lon": "longitude",
+  "speed_kmh": "speed",
+  "acceleration": "acceleration",
+  "heading": "heading",
+  "steering_angle": "steering_angle",
+  "labels": {
+    "geofence": "geofencing_violation",
+    "route": "route_anomaly",
+    "event": "anomalous_event"
+  }
+}

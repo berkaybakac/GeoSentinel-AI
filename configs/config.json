@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "api": { "alarm_verbose": true },
+  "geofence": {
+    "lat0": 0.0,
+    "lon0": 0.0,
+    "radius_m": 500,
+    "debounce_sec": 10
+  },
+  "filters": {
+    "max_speed_kmh": null,
+    "max_accel_mps2": null
+  },
+  "features": {
+    "window_sec": 0,
+    "scaler": "standard"
+  },
+  "model": {
+    "type": "isolation_forest",
+    "n_estimators": 256,
+    "max_samples": 1024,
+    "contamination": null,
+    "random_state": 42
+  },
+  "dataset": {
+    "mapping_file": "configs/mapping_dbra24.json"
+  }
+}

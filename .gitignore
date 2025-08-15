@@ -10,8 +10,7 @@ __pycache__/
 .DS_Store
 
 # Data & artifacts
-data/interim/
-data/processed/
+data/
 models/
 notebooks/.ipynb_checkpoints/
 
