@@ -1,18 +1,20 @@
 {
   "version": "1.0",
-  "api": { "alarm_verbose": true },
+  "api": {
+    "alarm_verbose": true
+  },
   "geofence": {
-    "lat0": 0.0,
-    "lon0": 0.0,
-    "radius_m": 500,
+    "lat0": 39.98750312492517,
+    "lon0": -89.96965243385128,
+    "radius_m": 31032.8,
     "debounce_sec": 10
   },
   "filters": {
-    "max_speed_kmh": null,
-    "max_accel_mps2": null
+    "max_speed_kmh": 180,
+    "max_accel_mps2": 6.0
   },
   "features": {
-    "window_sec": 0,
+    "window_sec": 5,
     "scaler": "standard"
   },
   "model": {

@@ -2,12 +2,10 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "api: dev",
+      "label": "api:dev",
       "type": "shell",
-      "command": "uvicorn geosentinel_ai.api.main:app --reload --host 0.0.0.0 --port 8000",
-      "options": {
-        "cwd": "${workspaceFolder}/src"
-      }
+      "command": "uvicorn locate.api.main:app --reload --host 0.0.0.0 --port 8000",
+      "options": { "cwd": "${workspaceFolder}/src" }
     }
   ]
 }

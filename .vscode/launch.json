@@ -7,7 +7,7 @@
       "request": "launch",
       "module": "uvicorn",
       "args": [
-        "geosentinel_ai.api.main:app",
+        "locate.api.main:app",
         "--reload",
         "--host",
         "0.0.0.0",

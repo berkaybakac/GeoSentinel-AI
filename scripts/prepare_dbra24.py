@@ -1,5 +1,7 @@
+# scripts/prepare_dbra24.py
 import argparse
 import json
+from datetime import UTC  # <-- eklendi
 from pathlib import Path
 
 import pandas as pd
@@ -7,10 +9,15 @@ from dateutil import parser as dtp
 
 
 def to_iso8601_utc(ts):
+    """
+    Her zaman ISO 8601 UTC (Z) döndürür.
+    - Naive timestamp -> UTC varsayılır.
+    - Aware timestamp -> UTC'ye dönüştürülür.
+    """
     dt = dtp.parse(str(ts))
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=None).isoformat(timespec="seconds") + "Z"
-    return dt.astimezone(tz=None).isoformat(timespec="seconds").replace("+00:00", "Z")
+        return dt.replace(tzinfo=UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return dt.astimezone(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def main():
@@ -41,20 +48,25 @@ def main():
         if c not in df.columns:
             raise ValueError(f"Eksik zorunlu kolon: {c}")
 
+    # km/h -> m/s
     if "speed_kmh" in df.columns:
         df["speed"] = df["speed_kmh"] / 3.6
     elif "speed" not in df.columns:
         df["speed"] = 0.0
 
+    # temel temizlik
     df = df.dropna(subset=["timestamp", "lat", "lon", "device_id"])
 
+    # opsiyonel hız filtresi
     max_kmh = cfg.get("filters", {}).get("max_speed_kmh", None)
     if max_kmh is not None:
         df = df[df["speed"] <= (max_kmh / 3.6)]
 
+    # Zamanı UTC-Z'ye normalle
     df["timestamp"] = df["timestamp"].map(to_iso8601_utc)
     df = df.sort_values(by=["device_id", "timestamp"], kind="stable")
 
+    # etiketler (varsa)
     labels = mp.get("labels", {})
     out_cols = ["device_id", "timestamp", "lat", "lon", "speed"]
     for k in ["geofence", "route", "event"]:
@@ -62,6 +74,7 @@ def main():
         if col and col in df.columns:
             out_cols.append(col)
 
+    # JSONL yaz
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with out.open("w", encoding="utf-8") as f:

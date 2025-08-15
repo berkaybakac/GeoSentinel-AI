@@ -1,0 +1,10 @@
+{
+  "missing": [
+    "vehicle_id",
+    "latitude",
+    "longitude",
+    "acceleration",
+    "heading",
+    "steering_angle"
+  ]
+}

@@ -35,7 +35,11 @@
   "editor.insertSpaces": true,
   "editor.detectIndentation": false,
 
-  // Görünüm (proje bazlı override edilebilir)
+  // Notebook ve Jupyter entegrasyonu
+  "jupyter.jupyterServerType": "local",
+  "jupyter.notebookFileRoot": "${workspaceFolder}",
+
+  // Görünüm
   "workbench.colorTheme": "Default Dark+",
   "workbench.iconTheme": "vscode-icons",
   "workbench.startupEditor": "newUntitledFile",
