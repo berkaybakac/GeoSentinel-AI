@@ -1,4 +1,4 @@
-from math import radians, sin, cos, asin, sqrt
+from math import asin, cos, radians, sin, sqrt
 
 
 def haversine_m(lat1, lon1, lat2, lon2) -> float:

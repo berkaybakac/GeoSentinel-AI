@@ -41,7 +41,6 @@
   "workbench.startupEditor": "newUntitledFile",
   "workbench.editor.enablePreview": true,
   "workbench.editor.enablePreviewFromQuickOpen": true,
-  "workbench.activityBar.visible": true,
   "workbench.statusBar.visible": true,
   "workbench.sideBar.location": "left",
   "workbench.panel.defaultLocation": "bottom",
