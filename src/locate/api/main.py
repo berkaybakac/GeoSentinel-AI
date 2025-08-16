@@ -1,7 +1,8 @@
+# src/locate/api/main.py
 from __future__ import annotations
 
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -11,9 +12,8 @@ from pydantic import BaseModel, Field
 from ..core.config import Config, load_config
 from ..core.geofence import DebouncedGeofence, GeofenceParams
 
+
 # -------------------- Pydantic şemaları --------------------
-
-
 class DetectIn(BaseModel):
     device_id: str
     timestamp: datetime
@@ -48,8 +48,20 @@ class DetectOutNormal(BaseModel):
     distance_m: float | None = None
 
 
-# -------------------- App & Config --------------------
+# -------------------- Yardımcılar --------------------
+def _to_iso8601_utc(dt: datetime) -> str:
+    """
+    Girdi datetime hangi timezone'da olursa olsun cevabı ISO 8601 UTC ('...Z') döndür.
+    Naive datetime ise UTC varsayılır.
+    """
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    else:
+        dt = dt.astimezone(UTC)
+    return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
 
+
+# -------------------- App & Config --------------------
 app = FastAPI(title="Locate – AI Anomali Tespit Modülü")
 
 CFG_PATH = Path("configs/config.json")
@@ -75,8 +87,6 @@ gf = DebouncedGeofence(
 
 
 # -------------------- Endpoints --------------------
-
-
 @app.get("/health")
 def health():
     return {
@@ -103,8 +113,8 @@ def detect(inp: DetectIn):
     # Geofence kontrolü
     triggered, distance_m = gf.check(inp.device_id, inp.lat, inp.lon)
 
-    # Zamanı ISO8601 UTC stringe çevir
-    ts_str = inp.timestamp.strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Zamanı ISO8601 UTC stringe çevir (güvence)
+    ts_str = _to_iso8601_utc(inp.timestamp)
 
     if triggered:
         # ---- Dokümantasyon 5.2 uyumlu alarm JSON ----
